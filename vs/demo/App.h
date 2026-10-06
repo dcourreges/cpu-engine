@@ -31,6 +31,9 @@ private:
 	cpu_texture m_textureEarth;
 	cpu_rt* m_rts[1];
 
+	cpu_mesh m_meshCircle;
+	cpu_mesh m_meshCircle3;
+
 	// UI
 	cpu_sprite* m_pSprite;
 
@@ -39,6 +42,8 @@ private:
 	cpu_material m_materialMissile;
 	cpu_material m_materialMoon;
 	cpu_material m_materialEarth;
+	cpu_material m_materialCircle;
+	cpu_material m_materialCircle3;
 
 	// 3D
 	Ship* m_pShip;
@@ -48,6 +53,11 @@ private:
 	cpu_entity* m_pMoon;
 	cpu_particle_emitter* m_pEmitter;
 	cpu_particle_emitter* m_pEmitter2;
+
+	cpu_entity* m_pCircle;
+	cpu_entity* m_pCircle2;
+	cpu_entity* m_pCircle3;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

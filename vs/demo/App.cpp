@@ -61,8 +61,11 @@ void App::OnStart()
 	m_textureEarth.Load("earth.png");
 	m_meshShip.CreateSpaceship();
 	m_meshMissile.CreateSphere(0.5f);
-	m_meshSphere.CreateSphere(2.0f, 12, 12);
+	m_meshSphere.CreateSphere(2.0f, 10, 10);
 	m_rts[0] = cpuEngine.CreateRT();
+
+	m_meshCircle.CreateCircle(10.0f, 20, CPU_WHITE );
+	m_meshCircle3.CreateCircle(m_meshCircle.radius/2, m_meshCircle.GetTriangleCount(), CPU_WHITE);
 
 	// UI
 	m_pSprite = cpuEngine.CreateSprite();
@@ -76,9 +79,11 @@ void App::OnStart()
 	m_materialMissile.ps = MissileShader;
 	m_materialMoon.ps = MoonShader;
 	m_materialEarth.pTexture = &m_textureEarth;
+	m_materialCircle.color = cpu::ToColor(0,0,50);
+	m_materialCircle3.color = cpu::ToColor(255,255,255);
 
 	// 3D
-	m_missileSpeed = 10.0f;
+	m_missileSpeed = 1.0f;
 	m_pEarth = cpuEngine.CreateEntity();
 	m_pEarth->pMesh = &m_meshSphere;
 	m_pEarth->pMaterial = &m_materialEarth;
@@ -89,6 +94,30 @@ void App::OnStart()
 	m_pMoon->pMesh = &m_meshSphere;
 	m_pMoon->pMaterial = &m_materialMoon;
 	m_pMoon->transform.SetScaling(0.1f);
+
+	m_pCircle = cpuEngine.CreateEntity();
+	m_pCircle->pMesh = &m_meshCircle;
+	m_pCircle->pMaterial = &m_materialCircle;
+	m_pCircle->transform.pos.x = 0.0f;
+	m_pCircle->transform.pos.y = -5.0f;
+	m_pCircle->transform.pos.z = 0.0f;
+	m_pCircle->transform.SetYPR(0, 0, 0);
+
+	m_pCircle2 = cpuEngine.CreateEntity();
+	m_pCircle2->pMesh = &m_meshCircle;
+	m_pCircle2->pMaterial = &m_materialCircle;
+	m_pCircle2->transform.pos.x = 0.0f;
+	m_pCircle2->transform.pos.y = -5.0f;
+	m_pCircle2->transform.pos.z = 0.0f;
+	m_pCircle2->transform.AddYPR(0, 3.141593, 0);
+
+	m_pCircle3 = cpuEngine.CreateEntity();
+	m_pCircle3->pMesh = &m_meshCircle3;
+	m_pCircle3->pMaterial = &m_materialCircle3;
+	m_pCircle3->transform.pos.x = 0.0f;
+	m_pCircle3->transform.pos.y = -4.9f;
+	m_pCircle3->transform.pos.z = 0.0f;
+
 
 	// Ship
 	m_pShip = new Ship;
@@ -101,12 +130,14 @@ void App::OnStart()
 	m_pEmitter = cpuEngine.CreateParticleEmitter();
 	m_pEmitter->rate = 1.0f;
 	m_pEmitter->colorMin = cpu::ToColor(255, 0, 0);
-	m_pEmitter->colorMax = cpu::ToColor(255, 128, 0);
+	m_pEmitter->colorMax = cpu::ToColor(255, 128, 69);
 	m_pEmitter2 = cpuEngine.CreateParticleEmitter();
 	m_pEmitter2->rate = 0.25f;
 	m_pEmitter2->colorMin = cpu::ToColor(0, 0, 255);
 	m_pEmitter2->colorMax = cpu::ToColor(0, 128, 255);
 	m_pEmitter2->pos.x = -2.0f;
+	
+
 
 	// Test
 	//m_pEmitter->blend = CPU_PARTICLE_OPAQUE;
@@ -128,7 +159,9 @@ void App::OnStart()
 	//pE->pMaterial->pTexture = &m_textureEarth;
 
 	// Camera
-	cpuEngine.GetCamera()->transform.pos.z = -5.0f;
+	cpuEngine.GetCamera()->transform.pos.z = -20.0f;
+	cpuEngine.GetCamera()->transform.pos.y = cpuEngine.GetCamera()->transform.pos.y + 8;
+	cpuEngine.GetCamera()->transform.SetYPR(0, -5.76f, 0);
 }
 
 void App::OnUpdate()
@@ -152,18 +185,48 @@ void App::OnUpdate()
 	m_pEmitter->dir.y = -m_pEmitter->dir.y; 
 	m_pEmitter->dir.z = -m_pEmitter->dir.z; 
 
+
+	m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 9, time * 2.0f);
+	m_pShip->GetEntity()->transform.dir = m_pCircle3->transform.dir;
+
 	// Turn camera
-	cpuEngine.GetCamera()->transform.AddYPR(0.0f, 0.0f, dt*0.1f);
+	// cpuEngine.GetCamera()->transform.AddYPR(0.0f, 0.0f, dt*0.1f);
 
 	// Move ship
+	/*XMFLOAT3 pos = m_pShip->GetEntity()->transform.pos;
+
 	if ( cpuInput.IsUp() )
-		cpuEngine.GetCamera()->transform.Move(dt*1.0f);
+		m_pShip->GetEntity()->transform.Move(dt * 2.0f);
+
 	if ( cpuInput.IsDown() )
-		cpuEngine.GetCamera()->transform.Move(-dt*1.0f);
+		m_pShip->GetEntity()->transform.Move(-dt*2.0f);
+
 	if ( cpuInput.IsLeft() )
-		cpuEngine.GetCamera()->transform.AddYPR(-dt*XM_PI);
-	if ( cpuInput.IsRight() )
-		cpuEngine.GetCamera()->transform.AddYPR(dt*XM_PI);
+		m_pShip->GetEntity()->transform.AddYPR(-dt*XM_PI);
+
+	if (cpuInput.IsRight())
+		m_pShip->GetEntity()->transform.AddYPR(dt * XM_PI);
+
+	if (cpuInput.vi.IsKey('W'))
+		m_pShip->GetEntity()->transform.AddYPR(0.0f, dt * 1.01f, 0.0f);
+
+	if (cpuInput.vi.IsKey('X'))
+		m_pShip->GetEntity()->transform.AddYPR(0.0f, -dt * 1.01f, 0.0f);*/
+
+	//cpuEngine.GetCamera()->transform.SetRotation(m_pShip->GetEntity()->transform);
+
+
+	/*XMFLOAT3 shipDir = m_pShip->GetEntity()->transform.dir;
+
+	cpuEngine.GetCamera()->transform.pos.x = m_pShip->GetEntity()->transform.pos.x - shipDir.x * 10.0f;
+	cpuEngine.GetCamera()->transform.pos.y = m_pShip->GetEntity()->transform.pos.y - (shipDir.y * 10.0f);
+	cpuEngine.GetCamera()->transform.pos.z = m_pShip->GetEntity()->transform.pos.z - (shipDir.z * 10.0f);*/
+
+	//cpuEngine.GetCamera()->transform.pos.x = 
+
+
+	
+
 
 	// Move missiles
 	for ( auto it=m_missiles.begin() ; it!=m_missiles.end() ; ++it )
@@ -228,12 +291,20 @@ void App::OnRender(int pass)
 			// Debug
 			cpu_stats& stats = *cpuEngine.GetStats();
 			std::string info = CPU_STR(cpuTime.fps) + " fps, ";
-			info += CPU_STR(stats.drawnTriangleCount) + " triangles, ";
+			/*info += CPU_STR(stats.drawnTriangleCount) + " triangles, ";
 			info += CPU_STR(stats.clipEntityCount) + " clipped entities\n";
 			info += CPU_STR(m_missiles.size()) + " missiles, ";
 			info += CPU_STR(cpuEngine.GetParticleData()->alive) + " particles, ";
 			info += CPU_STR(stats.threadCount) + " threads, ";
-			info += CPU_STR(stats.tileCount) + " tiles";
+			info += CPU_STR(stats.tileCount) + " tiles";*/
+
+			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.x) + " en X, ";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.y) + " en Y, ";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.z) + " en Z, \n";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.x ) + " direction en X, ";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.y ) + " direction en Y, ";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.z ) + " direction en Z, ";
+
 
 			// Ray cast
 			cpu_ray ray;
@@ -262,7 +333,7 @@ void App::MissileShader(cpu_ps_io& io)
 void App::MoonShader(cpu_ps_io& io)
 {
 	float time = cpuTime.total;
-	float scale = ((sinf(time*3.0f)*0.5f)+0.5f) * 0.5f + 0.5f; 
+	float scale = ((sinf(time*5.0f)*0.5f)+0.5f) * 0.5f + 0.5f; 
 	io.color.x = io.p.color.x * scale;
 	io.color.y = io.p.color.y * scale;
 	io.color.z = io.p.color.z;
@@ -287,8 +358,8 @@ void Ship::Create(cpu_mesh* pMesh, cpu_material* pMaterial)
 	m_pEntity = cpuEngine.CreateEntity();
 	m_pEntity->pMesh = pMesh;
 	m_pEntity->pMaterial = pMaterial;
-	m_pEntity->transform.pos.z = 5.0f;
-	m_pEntity->transform.pos.y = -3.0f;
+	m_pEntity->transform.pos.z = 2.0f;
+	m_pEntity->transform.pos.y = -4.6f;
 
 	m_pFSM = cpuEngine.CreateFSM(this);
 	m_pFSM->SetPostGlobal<StateShipGlobal>();
@@ -307,10 +378,12 @@ void Ship::Update()
 	float dt = cpuTime.delta;
 
 	// Turn ship
-	m_pEntity->transform.AddYPR(dt, dt, dt);
+	m_pEntity->transform.AddYPR(0, 0, 0);
 
 	// Move ship
 	m_pEntity->transform.pos.z += dt * 1.0f;
+	
+
 
 	// Fire
 	if ( cpuInput.vi.IsKey(VK_SPACE) )
@@ -345,11 +418,7 @@ void StateShipIdle::OnEnter(Ship& cur, int from, void* pParam)
 void StateShipIdle::OnExecute(Ship& cur)
 {
 	// Blink every 3 seconds
-	if ( cur.GetFSM()->totalTime>3.0f )
-	{
-		cur.GetFSM()->ToState(CPU_ID(StateShipBlink));
-		return;
-	}
+	
 }
 
 void StateShipIdle::OnExit(Ship& cur, int to)
