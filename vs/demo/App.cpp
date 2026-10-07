@@ -124,6 +124,8 @@ void App::OnStart()
 	m_pShip->Create(&m_meshShip, &m_materialShip);
 	m_pShip->GetFSM()->ToState(CPU_ID(StateShipIdle));
 
+	m_pShip->shipAxisRight = true;
+
 	// Particle
 	cpuEngine.GetParticleData()->Create(2000000);
 	cpuEngine.GetParticlePhysics()->gy = -0.5f;
@@ -178,54 +180,42 @@ void App::OnUpdate()
 	m_pEarth->transform.AddYPR(-dt);
 
 	// Move rock
-	m_pMoon->transform.OrbitAroundAxis(m_pEarth->transform.pos, CPU_VEC3_UP, 3.0f, time*2.0f);
+	m_pMoon->transform.OrbitAroundAxis(m_pEarth->transform.pos, CPU_VEC3_UP, 2.8f, time*2.0f);
 	m_pEmitter->pos = m_pMoon->transform.pos;
 	m_pEmitter->dir = m_pMoon->transform.dir;
 	m_pEmitter->dir.x = -m_pEmitter->dir.x; 
 	m_pEmitter->dir.y = -m_pEmitter->dir.y; 
 	m_pEmitter->dir.z = -m_pEmitter->dir.z; 
 
-
-	m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 9, time * 2.0f);
-	m_pShip->GetEntity()->transform.dir = m_pCircle3->transform.dir;
-
-	// Turn camera
-	// cpuEngine.GetCamera()->transform.AddYPR(0.0f, 0.0f, dt*0.1f);
-
 	// Move ship
-	/*XMFLOAT3 pos = m_pShip->GetEntity()->transform.pos;
 
-	if ( cpuInput.IsUp() )
-		m_pShip->GetEntity()->transform.Move(dt * 2.0f);
+	if (cpuInput.vi.IsKeyPressed(VK_SPACE))
+	{
+		if (m_pShip->shipAxisRight == false)
+		{
+			m_pShip->shipAxisRight = true;
+			return;
+		}
+		else
+		{
+			m_pShip->shipAxisRight = false;
+			return;
+		}
+	}
 
-	if ( cpuInput.IsDown() )
-		m_pShip->GetEntity()->transform.Move(-dt*2.0f);
+	m_pShip->CheckSpeed();
 
-	if ( cpuInput.IsLeft() )
-		m_pShip->GetEntity()->transform.AddYPR(-dt*XM_PI);
-
-	if (cpuInput.IsRight())
-		m_pShip->GetEntity()->transform.AddYPR(dt * XM_PI);
-
-	if (cpuInput.vi.IsKey('W'))
-		m_pShip->GetEntity()->transform.AddYPR(0.0f, dt * 1.01f, 0.0f);
-
-	if (cpuInput.vi.IsKey('X'))
-		m_pShip->GetEntity()->transform.AddYPR(0.0f, -dt * 1.01f, 0.0f);*/
-
-	//cpuEngine.GetCamera()->transform.SetRotation(m_pShip->GetEntity()->transform);
-
-
-	/*XMFLOAT3 shipDir = m_pShip->GetEntity()->transform.dir;
-
-	cpuEngine.GetCamera()->transform.pos.x = m_pShip->GetEntity()->transform.pos.x - shipDir.x * 10.0f;
-	cpuEngine.GetCamera()->transform.pos.y = m_pShip->GetEntity()->transform.pos.y - (shipDir.y * 10.0f);
-	cpuEngine.GetCamera()->transform.pos.z = m_pShip->GetEntity()->transform.pos.z - (shipDir.z * 10.0f);*/
-
-	//cpuEngine.GetCamera()->transform.pos.x = 
-
-
+	if (m_pShip->shipAxisRight == true)
+	{
+		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, time * m_pShip->m_speed);
+	}
 	
+	else if(m_pShip->shipAxisRight == false)
+	{
+		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, -time * m_pShip->m_speed);
+	}
+
+	m_pShip->GetEntity()->transform.LookAt(m_pCircle3->transform.pos.x, m_pCircle3->transform.pos.y, m_pCircle3->transform.pos.z);
 
 
 	// Move missiles
@@ -303,7 +293,9 @@ void App::OnRender(int pass)
 			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.z) + " en Z, \n";
 			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.x ) + " direction en X, ";
 			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.y ) + " direction en Y, ";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.z ) + " direction en Z, ";
+			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.z ) + " direction en Z, \n";
+			info += CPU_STR(m_pShip->m_speed) + " Speed, \n";
+
 
 
 			// Ray cast
@@ -382,12 +374,26 @@ void Ship::Update()
 
 	// Move ship
 	m_pEntity->transform.pos.z += dt * 1.0f;
-	
 
 
 	// Fire
-	if ( cpuInput.vi.IsKey(VK_SPACE) )
-		cpuApp.SpawnMissile();
+	/*if ( cpuInput.vi.IsKey(VK_SPACE) )
+		cpuApp.SpawnMissile();*/
+}
+
+void Ship::CheckSpeed()
+{
+	if (cpuInput.IsUpPressed() && m_speed < 15)
+	{
+		m_speed += 1;
+		return;
+	}
+
+	if (cpuInput.IsDownPressed() && m_speed > 0)
+	{
+		m_speed -= 1;
+		return;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
