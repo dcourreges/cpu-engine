@@ -44,6 +44,17 @@ void App::SpawnMissileWithMouse()
 	m_missiles.push_back(pMissile);
 }
 
+void App::SpawnBlock()
+{
+	cpu_entity* pBlock = cpuEngine.CreateEntity();
+	pBlock->pMesh = &m_meshBlock;
+	pBlock->transform.SetScaling(0.2f);
+	/*pBlock->transform.pos = ;*/
+	pBlock->transform.SetRotation(m_pShip->GetEntity()->transform);
+	pBlock->transform.Move(1.5f);
+	m_blocks.push_back(pBlock);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +78,8 @@ void App::OnStart()
 	m_meshCircle.CreateCircle(10.0f, 20, CPU_WHITE );
 	m_meshCircle3.CreateCircle(m_meshCircle.radius/2, m_meshCircle.GetTriangleCount(), CPU_WHITE);
 
+	m_meshBlock.CreateCylinder(0.7f, 0.5f, 8);
+
 	// UI
 	m_pSprite = cpuEngine.CreateSprite();
 	m_pSprite->pTexture = &m_textureBird;
@@ -81,6 +94,8 @@ void App::OnStart()
 	m_materialEarth.pTexture = &m_textureEarth;
 	m_materialCircle.color = cpu::ToColor(0,0,50);
 	m_materialCircle3.color = cpu::ToColor(255,255,255);
+
+	m_materialBlock.color = cpu::ToColor(0, 255, 255);
 
 	// 3D
 	m_missileSpeed = 1.0f;
@@ -109,7 +124,7 @@ void App::OnStart()
 	m_pCircle2->transform.pos.x = 0.0f;
 	m_pCircle2->transform.pos.y = -5.0f;
 	m_pCircle2->transform.pos.z = 0.0f;
-	m_pCircle2->transform.AddYPR(0, 3.141593, 0);
+	m_pCircle2->transform.AddYPR(0, XM_PI, 0);
 
 	m_pCircle3 = cpuEngine.CreateEntity();
 	m_pCircle3->pMesh = &m_meshCircle3;
@@ -117,6 +132,13 @@ void App::OnStart()
 	m_pCircle3->transform.pos.x = 0.0f;
 	m_pCircle3->transform.pos.y = -4.9f;
 	m_pCircle3->transform.pos.z = 0.0f;
+
+	m_pBlock = cpuEngine.CreateEntity();
+	m_pBlock->pMesh = &m_meshBlock;
+	m_pBlock->pMaterial = &m_materialBlock;
+	m_pBlock->transform.pos.x = 0.0f;
+	m_pBlock->transform.pos.y = -2.0f;
+	m_pBlock->transform.pos.z = 0.0f;
 
 
 	// Ship
@@ -138,6 +160,18 @@ void App::OnStart()
 	m_pEmitter2->colorMin = cpu::ToColor(0, 0, 255);
 	m_pEmitter2->colorMax = cpu::ToColor(0, 128, 255);
 	m_pEmitter2->pos.x = -2.0f;
+	
+	// Block
+
+	//m_pBlock = new Block;
+	//m_pBlock->Create(&m_meshShip, &m_materialBlock);
+
+
+
+
+	cpu_ray ray;
+	cpu_hit hit;
+	cpuEngine.HitEntity(hit, ray);
 	
 
 
@@ -189,33 +223,28 @@ void App::OnUpdate()
 
 	// Move ship
 
-	if (cpuInput.vi.IsKeyPressed(VK_SPACE))
-	{
-		if (m_pShip->shipAxisRight == false)
-		{
-			m_pShip->shipAxisRight = true;
-			return;
-		}
-		else
-		{
-			m_pShip->shipAxisRight = false;
-			return;
-		}
-	}
-
 	m_pShip->CheckSpeed();
 
-	if (m_pShip->shipAxisRight == true)
+	if (cpuInput.IsLeft())
 	{
-		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, time * m_pShip->m_speed);
-	}
-	
-	else if(m_pShip->shipAxisRight == false)
-	{
-		m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, -time * m_pShip->m_speed);
+		m_pShip->m_angleShip -= dt * m_pShip->m_speed;
 	}
 
+	if (cpuInput.IsRight())
+	{
+		m_pShip->m_angleShip += dt * m_pShip->m_speed;
+	}
+
+	m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, m_pShip->m_angleShip );
+	
+
 	m_pShip->GetEntity()->transform.LookAt(m_pCircle3->transform.pos.x, m_pCircle3->transform.pos.y, m_pCircle3->transform.pos.z);
+
+
+
+	//Block spawn
+
+
 
 
 	// Move missiles
@@ -383,15 +412,21 @@ void Ship::Update()
 
 void Ship::CheckSpeed()
 {
-	if (cpuInput.IsUpPressed() && m_speed < 15)
+	if (cpuInput.IsRight() && m_speed < 15)
 	{
-		m_speed += 1;
+		m_speed += 0.1f;
+		return;
+	}
+
+	else
+	{
+		m_speed -= 0.1f;
 		return;
 	}
 
 	if (cpuInput.IsDownPressed() && m_speed > 0)
 	{
-		m_speed -= 1;
+		m_speed -= 0.1f;
 		return;
 	}
 }
@@ -460,4 +495,24 @@ void StateShipBlink::OnExecute(Ship& cur)
 
 void StateShipBlink::OnExit(Ship& cur, int to)
 {
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Block::Block()
+{
+	m_pEntityBlock = nullptr;
+}
+
+void Block::Create(cpu_mesh* pMesh, cpu_material* pMaterial)
+{
+	m_pEntityBlock = cpuEngine.CreateEntity();
+	m_pEntityBlock->pMesh = pMesh;
+	m_pEntityBlock->pMaterial = pMaterial;
+	m_pEntityBlock->transform.pos.z = 2.0f;
+	m_pEntityBlock->transform.pos.y = -4.6f;
+
+
 }
