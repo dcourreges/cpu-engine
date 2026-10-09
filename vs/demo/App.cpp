@@ -75,7 +75,18 @@ void App::OnStart()
 	m_meshSphere.CreateSphere(2.0f, 10, 10);
 	m_rts[0] = cpuEngine.CreateRT();
 
-	m_meshCircle.CreateCircle(10.0f, 20, CPU_WHITE );
+	m_meshCircle.CreateCircle(10.0f, 36, CPU_BLACK);
+	for (int i = 0; i < m_meshCircle.vertices.size(); i += 6)
+	{
+		m_meshCircle.vertices[i].color = cpu::ToColor(255, 0, 0);
+		m_meshCircle.vertices[i+1].color = cpu::ToColor(255, 0, 0);
+		m_meshCircle.vertices[i+2].color = cpu::ToColor(255, 0, 0);
+	}
+													 
+	m_meshCircle.vertices[42].color = cpu::ToColor(0, 255, 0);
+	m_meshCircle.vertices[43].color = cpu::ToColor(0, 255, 0);
+	m_meshCircle.vertices[44].color = cpu::ToColor(0, 255, 0);
+
 	m_meshCircle3.CreateCircle(m_meshCircle.radius/2, m_meshCircle.GetTriangleCount(), CPU_WHITE);
 
 	m_meshBlock.CreateCylinder(0.7f, 0.5f, 8);
@@ -92,7 +103,8 @@ void App::OnStart()
 	m_materialMissile.ps = MissileShader;
 	m_materialMoon.ps = MoonShader;
 	m_materialEarth.pTexture = &m_textureEarth;
-	m_materialCircle.color = cpu::ToColor(0,0,50);
+
+	m_materialCircle.color = cpu::ToColor(255,255,255);
 	m_materialCircle3.color = cpu::ToColor(255,255,255);
 
 	m_materialBlock.color = cpu::ToColor(0, 255, 255);
@@ -223,9 +235,21 @@ void App::OnUpdate()
 
 	// Move ship
 
-	m_pShip->CheckSpeed();
+	//m_pShip->CheckSpeed();
 
-	if (cpuInput.IsLeft())
+	m_pShip->Moving();
+
+	m_pShip->m_angleShip += m_pShip->m_speed * dt;
+
+
+	m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 6.8f, m_pShip->m_angleShip );
+	
+	m_pShip->GetEntity()->transform.LookAt(m_pCircle3->transform.pos.x, m_pCircle3->transform.pos.y , m_pCircle3->transform.pos.z);
+
+	m_pShip->GetEntity()->transform.AddYPR(XM_PI, 0, 0);
+
+
+	/*if (cpuInput.IsLeft())
 	{
 		m_pShip->m_angleShip -= dt * m_pShip->m_speed;
 	}
@@ -233,13 +257,7 @@ void App::OnUpdate()
 	if (cpuInput.IsRight())
 	{
 		m_pShip->m_angleShip += dt * m_pShip->m_speed;
-	}
-
-	m_pShip->GetEntity()->transform.OrbitAroundAxis(m_pCircle3->transform.pos, CPU_VEC3_UP, 8.8f, m_pShip->m_angleShip );
-	
-
-	m_pShip->GetEntity()->transform.LookAt(m_pCircle3->transform.pos.x, m_pCircle3->transform.pos.y, m_pCircle3->transform.pos.z);
-
+	}*/
 
 
 	//Block spawn
@@ -309,21 +327,14 @@ void App::OnRender(int pass)
 		{
 			// Debug
 			cpu_stats& stats = *cpuEngine.GetStats();
-			std::string info = CPU_STR(cpuTime.fps) + " fps, ";
+			std::string info = CPU_STR(cpuTime.fps) + " fps, \n";
 			/*info += CPU_STR(stats.drawnTriangleCount) + " triangles, ";
 			info += CPU_STR(stats.clipEntityCount) + " clipped entities\n";
 			info += CPU_STR(m_missiles.size()) + " missiles, ";
 			info += CPU_STR(cpuEngine.GetParticleData()->alive) + " particles, ";
 			info += CPU_STR(stats.threadCount) + " threads, ";
 			info += CPU_STR(stats.tileCount) + " tiles";*/
-
-			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.x) + " en X, ";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.y) + " en Y, ";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.pos.z) + " en Z, \n";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.x ) + " direction en X, ";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.y ) + " direction en Y, ";
-			info += CPU_STR(cpuEngine.GetCamera()->transform.dir.z ) + " direction en Z, \n";
-			info += CPU_STR(m_pShip->m_speed) + " Speed, \n";
+			info += "Speed: " + CPU_STR(m_pShip->m_speed) + "\n";
 
 
 
@@ -339,7 +350,7 @@ void App::OnRender(int pass)
 			}
 
 			XMFLOAT3 tint = { 1.0f, 1.0f, 0.8f };
-			cpuDevice.DrawText(&m_font, info.c_str(), (int)(cpuDevice.GetWidth()*0.5f), 10, CPU_TEXT_CENTER, &tint);
+			cpuDevice.DrawText(&m_font, info.c_str(), (int)(cpuDevice.GetWidth()*0.5f), 10, CPU_TEXT_RIGHT, &tint);
 			break;
 		}
 	}
@@ -410,26 +421,102 @@ void Ship::Update()
 		cpuApp.SpawnMissile();*/
 }
 
-void Ship::CheckSpeed()
+
+
+void Ship::Moving()
 {
-	if (cpuInput.IsRight() && m_speed < 15)
+	float dt = cpuTime.delta;
+
+	if (cpuInput.vi.IsKeyPressed(VK_SPACE))
 	{
-		m_speed += 0.1f;
-		return;
+
+		m_inRotate = !m_inRotate;
 	}
 
-	else
-	{
-		m_speed -= 0.1f;
-		return;
-	}
 
-	if (cpuInput.IsDownPressed() && m_speed > 0)
-	{
-		m_speed -= 0.1f;
-		return;
-	}
+		if (m_inRotate)
+		{
+			m_speed += m_acceleration * dt;
+			if (m_speed > 15.0f) 
+			{
+				m_speed = 15.0f;
+			}
+			return;
+		}
+		else
+		{
+			m_speed -= m_deceleration * dt;
+			if (m_speed < 0.0f)
+			{
+				m_speed = 0.0f;
+			}
+			return;
+		}
+
+
+
+
+
+
+	//if (cpuInput.IsLeft())
+	//{
+	//	m_speed += 1.0f * dt;
+	//	m_angleShip += m_speed * dt;
+	//	return;
+	//}
+
+	//if (cpuInput.IsRight())
+	//{
+	//	m_speed -= 1.0f * dt;
+	//	m_angleShip += m_speed * dt;
+
+	//	return;
+	//}
+
+	//if (cpuInput.IsRightReleased() && cpuInput.IsLeftReleased())
+	//{
+	//	if (m_speed > 0.01f)
+	//	{
+	//		m_speed -= dt * m_deceleration;
+	//		return;
+	//	}
+
+	//	if (m_speed < 0.01f)
+	//	{
+	//		m_speed += dt * m_deceleration;
+
+	//		return;
+	//	}
+	//}
+
+	//else
+	//{
+	//	if (m_speed > 0.01f )
+	//	{
+	//		m_speed -= dt * m_deceleration;
+	//		return;
+	//	}
+
+	//	if (m_speed < 0.01f )
+	//	{
+	//		m_speed += dt * m_deceleration;
+	//		
+	//		return;
+	//	}
+
+	//	if (cpuInput.IsLeft() && cpuInput.IsRight() == false && m_speed < 0.01f && m_speed > 0.01f)
+	//	{
+	//		//m_angleShip -= m_speed * dt;
+	//		//m_speed = 0;
+	//		//return;
+	//	}
+
+	//}
+
+	
+
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

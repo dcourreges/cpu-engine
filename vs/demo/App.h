@@ -84,16 +84,22 @@ public:
 
 	void Update();
 
-	void CheckSpeed();
+	void Moving();
 
 	cpu_entity* GetEntity() { return m_pEntity; }
 	cpu_fsm<Ship>* GetFSM() { return m_pFSM; }
 
 	bool shipAxisRight;
 
-	float m_speed = 2;
+	float m_speed = 10;
 
 	float m_angleShip = 0.0f;
+
+	float m_deceleration = 10.0f;
+
+	float m_acceleration = 10.0f;
+
+	bool m_inRotate = false;
 
 protected:
 	cpu_entity* m_pEntity;
