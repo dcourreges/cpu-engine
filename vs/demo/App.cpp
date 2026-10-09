@@ -68,6 +68,9 @@ void App::OnStart()
 
 	// Resources
 	m_font.Create(cpuDevice.GetHeight()<=512 ? 14 : 28);
+
+	m_fontBig.Create(cpuDevice.GetHeight() <= 512 ? 40 : 80);
+
 	m_textureBird.Load("bird_amiga.png");
 	m_textureEarth.Load("earth.png");
 	m_meshShip.CreateSpaceship();
@@ -75,28 +78,16 @@ void App::OnStart()
 	m_meshSphere.CreateSphere(2.0f, 10, 10);
 	m_rts[0] = cpuEngine.CreateRT();
 
-	m_meshCircle.CreateCircle(10.0f, 36, CPU_BLACK);
-	for (int i = 0; i < m_meshCircle.vertices.size(); i += 6)
-	{
-		m_meshCircle.vertices[i].color = cpu::ToColor(255, 0, 0);
-		m_meshCircle.vertices[i+1].color = cpu::ToColor(255, 0, 0);
-		m_meshCircle.vertices[i+2].color = cpu::ToColor(255, 0, 0);
-	}
-													 
-	m_meshCircle.vertices[42].color = cpu::ToColor(0, 255, 0);
-	m_meshCircle.vertices[43].color = cpu::ToColor(0, 255, 0);
-	m_meshCircle.vertices[44].color = cpu::ToColor(0, 255, 0);
-
-	m_meshCircle3.CreateCircle(m_meshCircle.radius/2, m_meshCircle.GetTriangleCount(), CPU_WHITE);
+	loadRoulette();
 
 	m_meshBlock.CreateCylinder(0.7f, 0.5f, 8);
 
 	// UI
-	m_pSprite = cpuEngine.CreateSprite();
-	m_pSprite->pTexture = &m_textureBird;
+	//m_pSprite = cpuEngine.CreateSprite();
+	/*m_pSprite->pTexture = &m_textureBird;
 	m_pSprite->CenterAnchor();
 	m_pSprite->x = 40;
-	m_pSprite->y = 0;
+	m_pSprite->y = 0;*/
 
 	// Shader
 	m_materialShip.color = cpu::ToColor(255, 128, 0);
@@ -145,12 +136,12 @@ void App::OnStart()
 	m_pCircle3->transform.pos.y = -4.9f;
 	m_pCircle3->transform.pos.z = 0.0f;
 
-	m_pBlock = cpuEngine.CreateEntity();
-	m_pBlock->pMesh = &m_meshBlock;
+	//m_pBlock = cpuEngine.CreateEntity();
+	/*m_pBlock->pMesh = &m_meshBlock;
 	m_pBlock->pMaterial = &m_materialBlock;
 	m_pBlock->transform.pos.x = 0.0f;
 	m_pBlock->transform.pos.y = -2.0f;
-	m_pBlock->transform.pos.z = 0.0f;
+	m_pBlock->transform.pos.z = 0.0f;*/
 
 
 	// Ship
@@ -161,8 +152,8 @@ void App::OnStart()
 	m_pShip->shipAxisRight = true;
 
 	// Particle
-	cpuEngine.GetParticleData()->Create(2000000);
-	cpuEngine.GetParticlePhysics()->gy = -0.5f;
+	//cpuEngine.GetParticleData()->Create(2000000);
+	//cpuEngine.GetParticlePhysics()->gy = -0.5f;
 	m_pEmitter = cpuEngine.CreateParticleEmitter();
 	m_pEmitter->rate = 1.0f;
 	m_pEmitter->colorMin = cpu::ToColor(255, 0, 0);
@@ -212,15 +203,27 @@ void App::OnStart()
 	cpuEngine.GetCamera()->transform.SetYPR(0, -5.76f, 0);
 }
 
+
+
 void App::OnUpdate()
 {
-	// YOUR CODE HERE
+	if (cpuInput.vi.IsKeyPressed(VK_ESCAPE))
+	{
+		m_paused = !m_paused;
+		m_menuIndex = 0;
+	}
+	if (m_paused)
+	{
+		PauseMenu();
+		return;
+	}
+
 
 	float dt = cpuTime.delta;
 	float time = cpuTime.total;
 
 	// Move sprite
-	m_pSprite->y = 60 + cpu::RoundToInt(sinf(time)*20.0f);
+	//m_pSprite->y = 60 + cpu::RoundToInt(sinf(time)*20.0f);
 
 	// Turn earth
 	m_pEarth->transform.AddYPR(-dt);
@@ -235,7 +238,7 @@ void App::OnUpdate()
 
 	// Move ship
 
-	//m_pShip->CheckSpeed();
+	UpdateBet();
 
 	m_pShip->Moving();
 
@@ -247,21 +250,6 @@ void App::OnUpdate()
 	m_pShip->GetEntity()->transform.LookAt(m_pCircle3->transform.pos.x, m_pCircle3->transform.pos.y , m_pCircle3->transform.pos.z);
 
 	m_pShip->GetEntity()->transform.AddYPR(XM_PI, 0, 0);
-
-
-	/*if (cpuInput.IsLeft())
-	{
-		m_pShip->m_angleShip -= dt * m_pShip->m_speed;
-	}
-
-	if (cpuInput.IsRight())
-	{
-		m_pShip->m_angleShip += dt * m_pShip->m_speed;
-	}*/
-
-
-	//Block spawn
-
 
 
 
@@ -328,30 +316,83 @@ void App::OnRender(int pass)
 			// Debug
 			cpu_stats& stats = *cpuEngine.GetStats();
 			std::string info = CPU_STR(cpuTime.fps) + " fps, \n";
-			/*info += CPU_STR(stats.drawnTriangleCount) + " triangles, ";
-			info += CPU_STR(stats.clipEntityCount) + " clipped entities\n";
-			info += CPU_STR(m_missiles.size()) + " missiles, ";
-			info += CPU_STR(cpuEngine.GetParticleData()->alive) + " particles, ";
-			info += CPU_STR(stats.threadCount) + " threads, ";
-			info += CPU_STR(stats.tileCount) + " tiles";*/
 			info += "Speed: " + CPU_STR(m_pShip->m_speed) + "\n";
-
-
 
 			// Ray cast
 			cpu_ray ray;
 			cpuEngine.GetCursorRay(ray);
 			cpu_hit hit;
 			cpu_entity* pEntity = cpuEngine.HitEntity(hit, ray);
-			if ( pEntity )
+			if (pEntity)
 			{
 				info += "\nHIT: ";
 				info += CPU_STR(pEntity->index).c_str();
 			}
 
 			XMFLOAT3 tint = { 1.0f, 1.0f, 0.8f };
-			cpuDevice.DrawText(&m_font, info.c_str(), (int)(cpuDevice.GetWidth()*0.5f), 10, CPU_TEXT_RIGHT, &tint);
+			cpuDevice.DrawText(&m_font, info.c_str(), (int)(cpuDevice.GetWidth() * 0.5f), 10, CPU_TEXT_RIGHT, &tint);
+
+
+			if (m_lastResult >= 0)
+			{
+				std::string result = "Dernier resultat : \n" + std::string(GetColorName(m_lastResult));
+
+				XMFLOAT3 resultTint = { 1.0f, 1.0f, 1.0f };
+				if (m_slots[m_lastResult] == SLOT_RED)   resultTint = { 1.0f, 0.2f, 0.2f };
+				if (m_slots[m_lastResult] == SLOT_GREEN) resultTint = { 0.2f, 1.0f, 0.2f };
+
+				int x = (int)(cpuDevice.GetWidth() - 10.0f);
+				int y = (int)(cpuDevice.GetHeight() * 0.010f);
+
+				cpuDevice.DrawText(&m_font, result.c_str(), x, y, CPU_TEXT_RIGHT, &resultTint);
+			}
+
+			if (m_lastSlot >= 0)
+			{
+				std::string result = "Resultat : " + std::string(GetColorName(m_lastSlot));
+
+				XMFLOAT3 resultTint = { 1.0f, 1.0f, 1.0f };
+				if (m_slots[m_lastSlot] == SLOT_RED)   resultTint = { 1.0f, 0.2f, 0.2f };
+				if (m_slots[m_lastSlot] == SLOT_GREEN) resultTint = { 0.2f, 1.0f, 0.2f };
+
+				int x = (int)(cpuDevice.GetWidth() * 0.47f);
+				int y = (int)(cpuDevice.GetHeight() * 0.2f);
+
+				cpuDevice.DrawText(&m_fontBig, result.c_str(), x, y, CPU_TEXT_CENTER, &resultTint);
+			}
+
+			XMFLOAT3 hudTint = { 1.0f, 1.0f, 1.0f };
+
+			std::string hud = "Jetons : " + std::to_string(m_money) + "\n";
+			hud += "Mise : " + std::to_string(m_betAmount) + "  (fleches gauche / droite)\n";
+			hud += "Pari : " + std::string(ColorCodeName(m_betColor)) + "  (R / N / V)\n";
+			hud += "Espace : lancer\n";
+			if (!m_betMessage.empty())
+				hud += "\n" + m_betMessage;
+
+			cpuDevice.DrawText(&m_font, hud.c_str(), 10, 10, CPU_TEXT_LEFT, &hudTint);
+
+
+			if (m_paused)
+			{
+				const char* items[2] = { "Reprendre", "Quitter" };
+				int cx = (int)(cpuDevice.GetWidth() * 0.5f);
+				int cy = (int)(cpuDevice.GetHeight() * 0.2f);
+
+				XMFLOAT3 white = { 1.0f, 1.0f, 1.0f };
+				XMFLOAT3 yellow = { 1.0f, 1.0f, 0.2f };
+
+				cpuDevice.DrawText(&m_fontBig, "PAUSE", cx, cy, CPU_TEXT_CENTER, &white);
+
+				for (int i = 0; i < 2; i++)
+				{
+					std::string line = (i == m_menuIndex ? "> " : "  ") + std::string(items[i]);
+					cpuDevice.DrawText(&m_font, line.c_str(), cx, cy + 100 + i * 40, CPU_TEXT_CENTER,
+						i == m_menuIndex ? &yellow : &white);
+				}
+			}
 			break;
+
 		}
 	}
 }
@@ -370,6 +411,156 @@ void App::MoonShader(cpu_ps_io& io)
 	io.color.y = io.p.color.y * scale;
 	io.color.z = io.p.color.z;
 }
+
+void App::loadRoulette()
+{
+	m_meshCircle.CreateCircle(10.0f, 36, CPU_BLACK);
+	for (int i = 0; i < m_meshCircle.vertices.size(); i += 6)
+	{
+		m_meshCircle.vertices[i].color = cpu::ToColor(255, 0, 0);
+		m_meshCircle.vertices[i + 1].color = cpu::ToColor(255, 0, 0);
+		m_meshCircle.vertices[i + 2].color = cpu::ToColor(255, 0, 0);
+	}
+
+	m_meshCircle.vertices[42].color = cpu::ToColor(0, 255, 0);
+	m_meshCircle.vertices[43].color = cpu::ToColor(0, 255, 0);
+	m_meshCircle.vertices[44].color = cpu::ToColor(0, 255, 0);
+
+	m_meshCircle3.CreateCircle(m_meshCircle.radius / 2, m_meshCircle.GetTriangleCount(), CPU_WHITE);
+
+	const int SLOT_RED = 0;
+	const int SLOT_BLACK = 1;
+	const int SLOT_GREEN = 2;
+
+	const int slotCount = 36;
+
+	for (int k = 0; k < slotCount; k++)
+	{
+		if (k % 2 == 0)
+			m_slots[k] = SLOT_RED;
+		else
+			m_slots[k] = SLOT_BLACK;
+	}
+
+	m_slots[14] = SLOT_GREEN;
+
+}
+
+int App::GetSlot()
+{
+	float angle = fmodf(m_pShip->m_angleShip, XM_2PI);
+	if (angle < 0.0f)
+		angle += XM_2PI;
+
+	int slot = (int)(angle / (XM_2PI / 36.0f)) % 36;
+	return slot;
+}
+
+const char* App::GetColorName(int slot)
+{
+	switch (m_slots[slot])
+	{
+	case SLOT_RED:   return "ROUGE";
+	case SLOT_BLACK: return "NOIR";
+	case SLOT_GREEN: return "VERT";
+	}
+	return "?";
+}
+
+void App::GetResult()
+{
+	std::string info;
+	int slot = GetSlot();
+
+	info += "Case actuelle: " + CPU_STR(slot) + " (" + GetColorName(slot) + ")\n";
+
+	if (m_lastSlot >= 0)
+		info += "Resultat: " + CPU_STR(m_lastSlot) + " (" + GetColorName(m_lastSlot) + ")\n";
+}
+
+void App::PauseMenu()
+{
+	const int itemCount = 2; 
+
+	if (cpuInput.vi.IsKeyPressed(VK_UP))
+		m_menuIndex = (m_menuIndex + itemCount - 1) % itemCount;
+	if (cpuInput.vi.IsKeyPressed(VK_DOWN))
+		m_menuIndex = (m_menuIndex + 1) % itemCount;
+
+	if (cpuInput.vi.IsKeyPressed(VK_RETURN))
+	{
+		if (m_menuIndex == 0)
+			m_paused = false;
+		else
+			cpuEngine.Quit();
+	}
+}
+
+void App::UpdateBet()
+{
+	if (!m_pShip->IsIdle())
+		return;
+
+	// Couleur du pari
+	if (cpuInput.vi.IsKeyPressed('R')) m_betColor = SLOT_RED;
+	if (cpuInput.vi.IsKeyPressed('N')) m_betColor = SLOT_BLACK;
+	if (cpuInput.vi.IsKeyPressed('V')) m_betColor = SLOT_GREEN;
+
+	// Montant de la mise
+	if (cpuInput.vi.IsKeyPressed(VK_RIGHT)) m_betAmount += 10;
+	if (cpuInput.vi.IsKeyPressed(VK_LEFT))  m_betAmount -= 10;
+
+	if (m_betAmount > m_money) m_betAmount = m_money;
+	if (m_betAmount < 10)      m_betAmount = 10;
+}
+
+bool App::CanSpin()
+{
+	return m_betColor >= 0 && m_betAmount > 0 && m_betAmount <= m_money;
+}
+
+void App::PlaceBet()
+{
+	m_money -= m_betAmount;
+	m_betMessage = "";
+}
+
+void App::ResolveBet(int slot)
+{
+	if (m_slots[slot] == m_betColor)
+	{
+		int multiplier = (m_betColor == SLOT_GREEN) ? 14 : 2;
+		int payout = m_betAmount * multiplier;
+		m_money += payout;
+		m_betMessage = "GAGNE +" + std::to_string(payout - m_betAmount);
+	}
+	else
+	{
+		m_betMessage = "PERDU -" + std::to_string(m_betAmount);
+	}
+
+	if (m_money < 10)
+	{
+		m_money = 100;
+		m_betMessage += " (jetons rechargés)";
+	}
+
+	if (m_betAmount > m_money)
+		m_betAmount = m_money;
+}
+
+const char* App::ColorCodeName(int color)
+{
+	switch (color)
+	{
+	case App::SLOT_RED:   return "ROUGE";
+	case App::SLOT_BLACK: return "NOIR";
+	case App::SLOT_GREEN: return "VERT";
+	}
+	return "aucun";
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -425,32 +616,61 @@ void Ship::Update()
 
 void Ship::Moving()
 {
-	float dt = cpuTime.delta;
-
-	if (cpuInput.vi.IsKeyPressed(VK_SPACE))
-	{
-
-		m_inRotate = !m_inRotate;
-	}
+		float dt = cpuTime.delta;
 
 
-		if (m_inRotate)
+		if (cpuInput.vi.IsKeyPressed(VK_SPACE) && App::GetInstance().CanSpin())
 		{
+			if (m_speed == 0.0f && m_state == IDLE)
+			{
+				App::GetInstance().PlaceBet();
+				m_state = ACCELERATING;
+			}
+		}
+
+
+		switch (m_state)
+		{
+		case ACCELERATING:
 			m_speed += m_acceleration * dt;
-			if (m_speed > 15.0f) 
+			if (m_speed >= 15.0f)
 			{
 				m_speed = 15.0f;
+				m_plateauTimer = 0.0f;
+				m_state = HOLDING;
 			}
-			return;
-		}
-		else
-		{
+			break;
+
+		case HOLDING:
+			m_plateauTimer += dt;
+			if (m_plateauTimer >= 3.0f)
+			{
+				m_state = DECELERATING;
+			}
+			break;
+
+		case DECELERATING:
 			m_speed -= m_deceleration * dt;
-			if (m_speed < 0.0f)
+			if (m_speed <= 0.0f)
 			{
 				m_speed = 0.0f;
+				m_newTimer = 0.0f;
+				App::GetInstance().m_lastSlot = App::GetInstance().GetSlot();
+				App::GetInstance().m_lastResult = App::GetInstance().m_lastSlot;
+				App::GetInstance().ResolveBet(App::GetInstance().m_lastSlot);
+				m_state = RESULT;
 			}
-			return;
+			break;
+
+		case RESULT:
+			m_newTimer += dt;
+
+			if (m_newTimer >= 3.0f)
+			{
+				App::GetInstance().m_lastSlot = -1;
+				m_state = IDLE;
+			}
+			break;
 		}
 
 

@@ -21,11 +21,45 @@ public:
 	static void MissileShader(cpu_ps_io& io);
 	static void MoonShader(cpu_ps_io& io);
 
+	void loadRoulette();
+
+	enum SlotColor { SLOT_RED, SLOT_BLACK, SLOT_GREEN };
+
+	int GetSlot();
+	const char* GetColorName(int slot);
+
+	void GetResult();
+
+	int m_lastSlot = -1;
+
+	int m_lastResult = -1;
+
+	bool m_paused = false;
+	int  m_menuIndex = 0;
+	void PauseMenu();
+
+
+	int m_money = 100;
+	int m_betAmount = 10;
+	int m_betColor = -1;        
+	std::string m_betMessage;   
+
+	void UpdateBet();
+	bool CanSpin();
+	void PlaceBet();
+	void ResolveBet(int slot);
+
+	static const char* ColorCodeName(int color);
+
+
 private:
 	inline static App* s_pApp = nullptr;
 
 	// Resources
 	cpu_font m_font;
+
+	cpu_font m_fontBig;
+
 	cpu_mesh m_meshShip;
 	cpu_mesh m_meshMissile;
 	cpu_mesh m_meshSphere;
@@ -67,6 +101,11 @@ private:
 	std::list<cpu_entity*> m_blocks;
 	cpu_entity* m_pBlock;
 
+
+	int m_slots[36];
+	//int m_lastSlot = -1;
+
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,12 +125,14 @@ public:
 
 	void Moving();
 
+	bool IsIdle() { return m_state == IDLE; }
+
 	cpu_entity* GetEntity() { return m_pEntity; }
 	cpu_fsm<Ship>* GetFSM() { return m_pFSM; }
 
 	bool shipAxisRight;
 
-	float m_speed = 10;
+	float m_speed = 0;
 
 	float m_angleShip = 0.0f;
 
@@ -104,6 +145,15 @@ public:
 protected:
 	cpu_entity* m_pEntity;
 	cpu_fsm<Ship>* m_pFSM;
+
+private:
+
+	float m_plateauTimer = 0.0f;
+
+	float m_newTimer = 0.0f;
+
+	enum State {IDLE, ACCELERATING, HOLDING, DECELERATING, RESULT };
+	State m_state = IDLE;
 
 
 };
